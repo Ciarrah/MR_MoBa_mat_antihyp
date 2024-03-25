@@ -25,7 +25,7 @@ pheno_geno=fread("pheno_geno_hyp.txt")
 # Then run a regression of all the relevant SNPs for each drug subclass on the outcome of interest
 # Include PCs and batch variables I.e. one SNP per regression. And then run regression separately across all the SNPs.                                               
                                                     
-outcome_list=grep("MBRN",colnames(pheno_geno), value=T)[c(3,4,6,10,12,13,14,15,16,26,27,28,32,33,34,35,36,37)]
+outcome_list=c(grep("MBRN",colnames(pheno_geno), value=T)[c(3,4,6,10,12,13,14,15,16,26,27,28,32,33,34,35,36,37)], "prorated", "any_hyp_prg")
 
 # Load in SNP details, create an output table of coefficients, SE, pval, DF for each outcome
 # with eaf, other, and allele freq appended.
@@ -36,9 +36,9 @@ lm_MAT=lm_PAT=lm_OFF=as.data.frame(matrix(NA,nrow=1,ncol=(4*length(outcome_list)
 lm_ALL=as.data.frame(matrix(NA,nrow=1,ncol=(10*length(outcome_list))))
 MAT=PAT=OFF=ALL=NULL
 rownames(lm_MAT)=rownames(lm_PAT)=rownames(lm_OFF)=rownames(lm_ALL)=paste0(snp)
-index_1=seq(from=1,72,by=4)
+index_1=seq(from=1,80,by=4)
 colnames(lm_MAT)=colnames(lm_PAT)=colnames(lm_OFF)=paste0(rep(c("Beta","SE","Pval","DF"),length(outcome_list)),"_",rep(outcome_list,each=4))
-index_2=seq(from=1,180,by=10)
+index_2=seq(from=1,200,by=10)
 colnames(lm_ALL)=paste0(c(paste0(c(rep("Beta",3),rep("SE",3),rep("Pval",3)),rep(c("_Off","_Mat","_Pat"),3)),"DF"),"_",rep(outcome_list,each=10))
 
 # lm for continuous models or categorical ones
@@ -56,6 +56,7 @@ pheno_geno$early_eclmps_MBRN=as.factor(pheno_geno$early_eclmps_MBRN)
 pheno_geno$HELLP_MBRN=as.factor(pheno_geno$HELLP_MBRN)
 pheno_geno$dlvry_initin_MBRN=as.factor(pheno_geno$dlvry_initin_MBRN)
 pheno_geno$dlvry_initin_MBRN[which(pheno_geno$dlvry_initin_MBRN=="NA")]=NA
+pheno_geno$any_hyp_prg=as.factor(pheno_geno$any_hyp_prg)
 
 # Create a loop that runs linear regression for each continuous outcome, logistic for binary variables and 
 # continuous for categorical variables with more than one variable.
