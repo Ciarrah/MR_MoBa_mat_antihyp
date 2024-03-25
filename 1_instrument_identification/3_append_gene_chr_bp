@@ -1,0 +1,32 @@
+library(readr)
+
+# Load in the genes of interest
+# Load in genome positions.
+# Append chr:bp and save to send to MoBa.
+
+genetic_targets=read.csv("identified_genes_hypertension_190523.csv")
+
+# Human gene coordinates https://www.gencodegenes.org/human/release_43lift37.html (b37). Get chr:bp for genes.
+
+gencode=read.delim("gencode.v43lift37.annotation.gff3", header=F, comment.char="#")
+
+split_vars=strsplit(as.character(gencode$V9), ";")
+extract_value=function(x, field) {
+  pattern=paste0(field, "=([^;]+)")
+  matches=regmatches(x, regexpr(pattern, x))
+  if (length(matches) > 0) {
+    return(gsub(pattern, "\\1", matches))
+  } else {
+    return(NA)
+  }
+}
+rm(split_vars)
+gencode=gencode[which(gencode$V3=="gene"),]
+gencode$gene_name=sapply(split_vars, extract_value, field="gene_name")
+gencode=gencode[which(gencode$gene_name%in%genetic_targets$gene),]
+
+instruments=gencode[,c("V1", "V4","V5","gene_name")]
+instruments$V1=gsub("chr","",instruments$V1)
+
+write.table(instruments, "gene_chr_pos_hyp.txt",
+            append = FALSE, quote = F, sep = " ", row.names = F, col.names = F)
