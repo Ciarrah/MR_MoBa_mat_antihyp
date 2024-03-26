@@ -25,7 +25,7 @@ pheno_geno=fread("pheno_geno_hyp.txt")
 # Then run a regression of all the relevant SNPs for each drug subclass on the outcome of interest
 # Include PCs and batch variables I.e. one SNP per regression. And then run regression separately across all the SNPs.                                               
                                                     
-outcome_list=c(grep("MBRN",colnames(pheno_geno), value=T)[c(3,4,6,10,12,13,14,15,16,26,27,28,32,33,34,35,36,37)], "prorated", "any_hyp_prg")
+outcome_list=c(grep("MBRN",colnames(pheno_geno), value=T)[c(3,4,6,10,12,13,14,15,16,26,27,28,32,33,34,35,36,37)])
 
 # Load in SNP details, create an output table of coefficients, SE, pval, DF for each outcome
 # with eaf, other, and allele freq appended.
@@ -125,7 +125,7 @@ for (j in 1:length(outcome_list))
     lm_ALL_tmp=summary(glm(as.formula(paste(outcome_list[j],paste(c(OFF,MAT,PAT,grep("age|sx|PC|batch",colnames(pheno_geno),value=TRUE)),collapse="+"),
                                             sep="~")),data=pheno_geno,family="binomial"))
     
-    lm_ALL[1,index_2[j]:(index_2[j]+9)]=c(lm_ALL_tmp$coefficients[c(OFF,MAT,PAT),c("Estimate","Std. Error","Pr(>|z|)")],lm_OFF_tmp$df.residual)
+    lm_ALL[1,index_2[j]:(index_2[j]+9)]=c(lm_ALL_tmp$coefficients[c(OFF,MAT,PAT),c("Estimate","Std. Error","Pr(>|z|)")],lm_ALL_tmp$df.residual)
     
   }
   else 
