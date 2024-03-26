@@ -106,7 +106,7 @@ for (j in 1:length(outcome_list))
     lm_ALL_tmp=summary(glm(as.formula(paste(outcome_list[j],paste(c(OFF,MAT,PAT,grep("age|sx|PC|batch",colnames(pheno_geno),value=TRUE)),collapse="+"),
                                             sep="~")),data=pheno_geno,family="binomial"))
     
-    lm_ALL[1,index_2[j]:(index_2[j]+9)]=c(lm_ALL_tmp$coefficients[c(OFF,MAT,PAT),c("Estimate","Std. Error","Pr(>|z|)")],lm_OFF_tmp$df.residual)
+    lm_ALL[1,index_2[j]:(index_2[j]+9)]=c(lm_ALL_tmp$coefficients[c(OFF,MAT,PAT),c("Estimate","Std. Error","Pr(>|z|)")],lm_ALL_tmp$df.residual)
   }
   
   else if ((is.factor(pheno_geno[[outcome_list[j]]]))==T&&length(levels(pheno_geno[[outcome_list[j]]]))==1)
