@@ -241,20 +241,6 @@ write.csv(results_all_DC ,"full_maternal_results.csv")
 results_all_DC=read.csv("full_maternal_results.csv")
 colnames(results_all_DC)=gsub("\\.", " ", colnames(results_all_DC))
 
-# Post review changes
-
-results_all_DC$`Drug subclass 2`=NA
-results_all_DC$`Drug subclass 2`[grep("Calcium-channel", results_all_DC$`Drug subclass`)]="Calcium-channel blockers targeting CACNB2 (3 SNPs)"
-results_all_DC$`Drug subclass 2`[grep("Ednra", results_all_DC$`Drug subclass`)]="Vasodilator Antihypertensive Drugs targeting EDNRA (1 SNP)"
-results_all_DC$`Drug subclass 2`[grep("Beta-adrenoceptor", results_all_DC$`Drug subclass`)]="Beta-adrenoceptor Blocking drugs targeting ADRB1 (1 SNP)"
-results_all_DC$`Drug subclass 2`[grep("Potassium-sparing", results_all_DC$`Drug subclass`)]="Potassium-sparing Diuretics and Aldosterone Antagonists targeting SCNN1D (1 SNP)"
-results_all_DC$`Drug subclass 2`[grep("Kcnj11", results_all_DC$`Drug subclass`)]="Vasodilator Antihypertensive Drugs targeting KCNJ11 (1 SNP)"
-
-results_all_DC$tmp=results_all_DC$`Drug subclass`
-results_all_DC$`Drug subclass`=results_all_DC$`Drug subclass 2`
-results_all_DC$`Drug subclass`=sapply(strwrap(results_all_DC$`Drug subclass`, width = 20, simplify = FALSE), paste, collapse = "\n")
-
-
 filename=paste0("hypertension_subclass_maternal_r&r.tiff")
 plot_normal_scale=ggplot(results_all_DC[results_all_DC$Outcome != "Hypertensive\ndisorders of\npregnancy", ], aes(x = `Beta coefficient`, y = `Drug subclass`)) +
   geom_point(size = 2, na.rm = TRUE) +
