@@ -51,7 +51,7 @@ print(no_rsid)
 # 3. Append the gene and drug class, check mechanism of action on DrugBank for possible combined instruments per drug subclass.
 full_outcome$gene=NULL
 double_check=as.data.frame(matrix(NA,nrow=0, ncol=4))
-gene_pos=read_delim("gene_chr_pos_hyp_270323.txt", col_names = F)
+gene_pos=read_delim("gene_chr_pos_hyp.txt", col_names = F)
 colnames(gene_pos)=c("chr.exposure","pos.exposure","pos.end.exposure","gene")
 for (i in 1:nrow(full_outcome))
 {
@@ -70,7 +70,7 @@ for (i in 1:nrow(full_outcome))
   }
 }
 
-genetic_targets=read.csv("/Users/cb18669/Library/CloudStorage/OneDrive-UniversityofBristol/Documents/PhD_year4/MoBa_scripts_used/Pre-moba-datafiles/identified_genes_hypertension_190523.csv")
+genetic_targets=read.csv("/Users/cb18669/Library/CloudStorage/OneDrive-UniversityofBristol/Documents/PhD_year4/MoBa_scripts_used/Pre-moba-datafiles/identified_genes_hypertension.csv")
 hypertension_bnf_code_to_drug_class=read_csv("/Users/cb18669/Library/CloudStorage/OneDrive-UniversityofBristol/Documents/PhD_year4/MoBa_scripts_used/Pre-moba-datafiles/hypertension_bnf_code_to_drug_class.csv")
 
 genetic_targets=merge(genetic_targets, hypertension_bnf_code_to_drug_class, all=T)
