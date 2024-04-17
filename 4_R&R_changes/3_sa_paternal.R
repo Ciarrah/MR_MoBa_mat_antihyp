@@ -1,8 +1,7 @@
-
 ## R&R MR analysis
 
 library(readr);library(TwoSampleMR);library(data.table);library(tidyr);library(stringr);library(ggplot2);library(ggh4x);library(vcfR);library(grid)
-library(gwasvcf);library(gwasglue);library(ggplot2);library(gridExtra);library(readxl);library(LDlinkR);library(readxl);library(dplyr)
+library(gwasvcf);library(gwasglue);library(gridExtra);library(readxl);library(LDlinkR);library(readxl);library(dplyr);library(openxlsx)
 `%!in%` = Negate(`%in%`)
 options(scipen = 999)
 
@@ -166,6 +165,7 @@ results_DC$Outcome[grep("apgar_1min", results_DC$Outcome)]="Apgar score, 1 minut
 results_DC$Outcome[grep("apgar_5min", results_DC$Outcome)]="Apgar score, 5 minutes"
 results_DC$Outcome[grep("prorated_scores", results_DC$Outcome)]="Developmental score"
 results_DC$Outcome[grep("BW_GA", results_DC$Outcome)]="Birthweight z-score"
+results_DC$Outcome[grep("Congenital_malf", results_DC$Outcome)]="Congenital malformation"
 
 colnames(results_DC)[which(colnames(results_DC)=="b")]=c("Beta coefficient")
 
@@ -178,6 +178,7 @@ results_wald_DC$Outcome[grep("apgar_1min", results_wald_DC$Outcome)]="Apgar scor
 results_wald_DC$Outcome[grep("apgar_5min", results_wald_DC$Outcome)]="Apgar score, 5 minutes"
 results_wald_DC$Outcome[grep("prorated_scores", results_wald_DC$Outcome)]="Developmental score"
 results_wald_DC$Outcome[grep("BW_GA", results_wald_DC$Outcome)]="Birthweight z-score"
+results_wald_DC$Outcome[grep("Congenital_malf", results_wald_DC$Outcome)]="Congenital malformation"
 
 colnames(results_wald_DC)[which(colnames(results_wald_DC)=="b")]=c("Beta coefficient")
 results_wald_DC$`Drug subclass`=str_to_sentence(results_wald_DC$`Drug subclass`)
@@ -194,6 +195,9 @@ results_wald_DC$nsnp=1
 saved_wald_results=results_wald_DC
 saved_ivw_results=results_ivw_DC
 
+# 7. Transform variables from per sd increase to 10mmHg for interpretability. Flip the sign of the MR estimates so 
+# they are representative of drug effects (decreasing). Divide by SD and multiply by 10 to interpret on per 10mmHg scale.
+
 results_all_DC=rbind(saved_ivw_results[,c("Beta coefficient","se","pval","Upper CI","Lower CI","Drug subclass","MR method","Outcome","snps","nsnp")],
                      saved_wald_results[which(saved_wald_results$`Drug subclass`%!in%saved_ivw_results$outcome),c("Beta coefficient","se","pval","Upper CI","Lower CI","Drug subclass","MR method","Outcome","snps","nsnp")])
 
@@ -201,15 +205,6 @@ results_all_DC$`Drug subclass`[which(results_all_DC$`MR method`=="Wald ratio")]=
 results_all_DC$`Drug subclass`[which(results_all_DC$`MR method`=="IVW")]=paste0(results_all_DC$`Drug subclass`[which(results_all_DC$`MR method`=="IVW")]," (",
                                                                                 results_all_DC$nsnp[which(results_all_DC$`MR method`=="IVW")], " SNPs)")
 results_all_DC$Condition="Hypertension"
-
-# Ensure numeric. Exponentiate coefficients from binary variables
-
-results_all_DC[,c("Beta coefficient", "se", "pval","Upper CI", "Lower CI")]=apply(results_all_DC[,c("Beta coefficient", "se", "pval","Upper CI", "Lower CI")], 2, as.numeric)
-results_all_DC[which(results_all_DC$Outcome%in%c("Hypertensive disorders of pregnancy")),c("Beta coefficient", "Upper CI", "Lower CI")]=
-  exp(results_all_DC[which(results_all_DC$Outcome%in%c("Hypertensive disorders of pregnancy")),c("Beta coefficient", "Upper CI", "Lower CI")])
-
-# 7. Transform variables from per sd increase to 10mmHg for interpretability. Flip the sign of the MR estimates so 
-# they are representative of drug effects (decreasing). Divide by SD and multiply by 10 to interpret on per 10mmHg scale.
 
 results_all_DC$`Beta coefficient`=(results_all_DC$`Beta coefficient`/19.38)*10
 results_all_DC$`Beta coefficient`=-results_all_DC$`Beta coefficient`
@@ -223,13 +218,16 @@ results_all_DC$tmp=results_all_DC$`Upper CI`
 results_all_DC$`Upper CI`=results_all_DC$`Lower CI`
 results_all_DC$`Lower CI`=results_all_DC$tmp
 
-# 8. Plot results, "Preeclampsia" panel with modified x-axis limits.
+results_all_DC[which(results_all_DC$Outcome%in%c("Congenital malformation", "Hypertensive disorders of pregnancy")),c("Beta coefficient", "Upper CI", "Lower CI")]=
+  exp(results_all_DC[which(results_all_DC$Outcome%in%c("Congenital malformation", "Hypertensive disorders of pregnancy")),c("Beta coefficient", "Upper CI", "Lower CI")])
 
 results_all_DC$Outcome=str_wrap(results_all_DC$Outcome, width=20)
 
-# write.csv(results_all_DC ,"sa_pat_results_r_r_CB.csv")
+# 8. Plot results, "Preeclampsia" panel with modified x-axis limits.
 
-results_all_DC=read_excel("sa_pat_results_r_r_CB.xlsx")
+# write.xlsx(results_all_DC ,"full_paternal_results.xlsx")
+
+results_all_DC=read.xlsx("full_paternal_results.xlsx")
 colnames(results_all_DC)=gsub("\\.", " ", colnames(results_all_DC))
 
 # Post review changes
@@ -246,7 +244,6 @@ results_all_DC$`Drug subclass`=results_all_DC$`Drug subclass 2`
 results_all_DC$`Drug subclass`=sapply(strwrap(results_all_DC$`Drug subclass`, width = 20, simplify = FALSE), paste, collapse = "\n")
 
 # Format for table
-
 
 sigfigs <- function(x, n_sigfig=3){
   abs_x = abs(x)
@@ -283,6 +280,8 @@ results_all_DC$'Estimate (95% CI)'=paste0(results_all_DC$f_beta, " (",
                                           results_all_DC$f_lower, ", ",
                                           results_all_DC$f_upper, ")")
 
+results_all_DC$`Drug subclass`=gsub("\n", " ", results_all_DC$`Drug subclass`)
+
 for (k in unique(results_all_DC$Outcome))
 {
   
@@ -302,12 +301,12 @@ for (k in unique(results_all_DC$Outcome))
     labs(title = NULL) +
     theme(
       strip.background = element_blank(),
-      plot.margin = unit(c(1, 1, 1, 1), "lines"),
+      plot.margin = unit(c(1, 2, 1, 2), "lines"),
       text = element_text(size = 9))
   
   # Plot
   
-  if (length(grep("Hypertensive", k)) == 0) {
+  if (length(grep("Hypertensive|Congenital", k)) == 0) {
     plot_1 <- ggplot(results_all_DC[results_all_DC$Outcome %in% c(k), ], aes(x = `Beta coefficient`, y = `Drug subclass`)) +
       geom_point(size = 2, na.rm = TRUE) +
       scale_y_discrete(position = "left") +
@@ -321,7 +320,7 @@ for (k in unique(results_all_DC$Outcome))
             axis.title.x = element_blank(), 
             axis.title.y = element_blank())
     
-  } else {
+  } else if (length(grep("Congenital", k)) == 1){
     plot_1 <- ggplot(results_all_DC[results_all_DC$Outcome %in% c(k), ], aes(x = `Beta coefficient`, y = `Drug subclass`)) +
       geom_point(size = 2) +
       scale_y_discrete(position = "left") +
@@ -330,7 +329,23 @@ for (k in unique(results_all_DC$Outcome))
       geom_vline(data = subset(results_all_DC, Outcome %in% c(k)), aes(xintercept = 1)) +
       theme_bw() +
       theme(text = element_text(size=10),
-            strip.background = element_blank(), 
+            strip.background = element_blank(),
+            axis.text.y=element_blank(), 
+            axis.ticks.y=element_blank(),
+            axis.title.x = element_blank(), 
+            axis.title.y = element_blank()) +
+      guides(color = "none")
+  }
+  else if (length(grep("Hypertensive", k)) == 1){
+    plot_1 <- ggplot(results_all_DC[results_all_DC$Outcome %in% c(k), ], aes(x = `Beta coefficient`, y = `Drug subclass`)) +
+      geom_point(size = 2) +
+      scale_y_discrete(position = "left") +
+      scale_x_continuous(trans = "log10") +
+      geom_linerange(aes(xmin = `Lower CI`, xmax = `Upper CI`)) +
+      geom_vline(data = subset(results_all_DC, Outcome %in% c(k)), aes(xintercept = 1)) +
+      theme_bw() +
+      theme(text = element_text(size=10),
+            strip.background = element_blank(),
             axis.text.y=element_blank(), 
             axis.ticks.y=element_blank(),
             axis.title.x = element_blank(), 
@@ -343,26 +358,53 @@ for (k in unique(results_all_DC$Outcome))
                                                                      gp = gpar(fontface = "bold", fontsize=15))))
 }
 
-x_title="Odds Ratio (OR) and 95% confidence interval (CI) for a 10mmHg decrease in systolic blood pressure"
-tiff(filename=paste0("paternal_w_table_1_r&r.tiff"),
-     units="cm", width=45, height=38, res=300)
-plot_a=grid.arrange(table_plot_1, table_plot_2, table_plot_3, table_plot_4, ncol = 2, bottom=x_title)
+x_title="Beta, continuous outcome, and 95% confidence interval (CI) for a 10mmHg decrease in systolic blood pressure"
+tiff(filename=paste0("a_paternal_w_table_1_r&r.tiff"),
+     units="cm", width=45, height=45, res=300)
+plot_a=grid.arrange(table_plot_9, table_plot_10, table_plot_7,
+                    ncol = 1, bottom=x_title)
 plot_a
 dev.off()
 
-x_title="Odds Ratio (OR), binary outcome, or beta, continuous outcome, and 95% confidence interval (CI) for a 10mmHg decrease in systolic blood pressure"
-tiff(filename=paste0("paternal_w_table_2_r&r.tiff"),
-     units="cm", width=45, height=38, res=300)
-plot_b=grid.arrange(table_plot_5, table_plot_6, table_plot_7, table_plot_8, ncol = 2, bottom=x_title)
+x_title="Odds ratio (OR), binary outcome, or beta, continuous outcome, and 95% confidence interval (CI) for a 10mmHg decrease in systolic blood pressure"
+tiff(filename=paste0("b_paternal_w_table_2_r&r.tiff"),
+     units="cm", width=45, height=45, res=300)
+plot_b=grid.arrange(table_plot_2, table_plot_1, table_plot_3, ncol = 1, bottom=x_title)
 plot_b
+dev.off()
+
+tiff(filename=paste0("c_paternal_w_table_2_r&r.tiff"),
+     units="cm", width=45, height=45, res=300)
+plot_c=grid.arrange(table_plot_5, table_plot_8, table_plot_4, ncol = 1, bottom=x_title)
+plot_c
 dev.off()
 
 # Journal request .eps file
 
 ggsave("plot_a_paternal.eps", plot_a, device="eps",
-       units="cm", width=45, height=38)
+       units="cm", width=45, height=45)
 
 ggsave("plot_b_paternal.eps", plot_b, device="eps",
-       units="cm", width=45, height=38)
+       units="cm", width=45, height=45)
 
+ggsave("plot_c_paternal.eps", plot_c, device="eps",
+       units="cm", width=45, height=45)
+
+
+# Results files
+results_table_Paternal_DC=as.data.frame(matrix(0,ncol=10, nrow=(nrow(results_all_DC))))
+colnames(results_table_Paternal_DC)=c("Outcome","Beta coefficient (95% CI)", "Standard error", "Pvalue", "No. SNPs", "Drug subclass", "Condition", "MR method", "Gene", "rsID")
+results_table_Paternal_DC[,"Outcome"]=results_all_DC$Outcome
+results_table_Paternal_DC[,"Beta coefficient (95% CI)"]=c(paste0(round(results_all_DC$`Beta coefficient`, 2), " (", round(results_all_DC$`Lower CI`,2), ", ", round(results_all_DC$`Upper CI`,2), ")"))
+results_table_Paternal_DC[,"Standard error"]=round(results_all_DC$se,2)
+results_table_Paternal_DC[,"MR method"]=results_all_DC$`MR method`
+results_table_Paternal_DC[,"Pvalue"]=round(results_all_DC$pval,2)
+results_table_Paternal_DC[,"Drug subclass"]=results_all_DC$`Drug subclass`
+results_table_Paternal_DC[,"Drug subclass"]=gsub("\n"," ",results_all_DC$`Drug subclass`)
+results_table_Paternal_DC[,"No. SNPs"]=results_all_DC$nsnp
+results_table_Paternal_DC[,"Gene"]=results_all_DC$Gene
+results_table_Paternal_DC[,"rsID"]=results_all_DC$snps
+write.csv(results_table_Paternal_DC,"hypertension_subclass_paternal_r&r.csv" )
+
+write.csv(results_all_DC, "gest_r_full_file_pat.csv")
 
