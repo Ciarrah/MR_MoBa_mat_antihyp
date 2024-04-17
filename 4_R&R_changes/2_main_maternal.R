@@ -1,26 +1,24 @@
-# Code to rerun analysis to incorporate editor/reviewer suggestions
-
 ## R&R MR analysis
 
 library(readr);library(TwoSampleMR);library(data.table);library(tidyr);library(stringr);library(ggplot2);library(ggh4x);library(vcfR);library(grid)
-library(gwasvcf);library(gwasglue);library(ggplot2);library(gridExtra);library(readxl);library(LDlinkR);library(readxl);library(dplyr)
+library(gwasvcf);library(gwasglue);library(gridExtra);library(readxl);library(LDlinkR);library(readxl);library(dplyr);library(openxlsx)
 `%!in%` = Negate(`%in%`)
 options(scipen = 999)
 
 ## 1. Check the overlap between the snp-exposure GWAS and snp-outcome GWAS
 
 # Load full, unclumped SNP-exposure gwas with all significance level
-hypertension_full=gwasvcf::query_gwas("~/Library/CloudStorage/OneDrive-UniversityofBristol/Downloads/ukb-b-20175.vcf.gz", pval = 1)
+hypertension_full=gwasvcf::query_gwas("ukb-b-20175.vcf.gz", pval = 1)
 hypertension_full=gwasglue::gwasvcf_to_TwoSampleMR(hypertension_full, "exposure") #9797146 without dupliate snps
 
 # Append gene info from gencode, subset to SNPs with RSID
-b37=fread("Library/CloudStorage/OneDrive-UniversityofBristol/Downloads/common_all_20180423.vcf.gz")
+b37=fread("common_all_20180423.vcf.gz")
 tmp=hypertension_full[hypertension_full$SNP%in%b37$ID,] #9291736
 tmp=merge(tmp,b37[,c("ID","INFO")], by.x="SNP",by.y="ID")
 tmp$gene=gsub('.*GENEINFO=([^;:]+).*', '\\1', tmp[["INFO"]])
 
 # List of snps in MoBa
-moba_snps=read_excel("/Users/cb18669/Library/CloudStorage/OneDrive-UniversityofBristol/Documents/PhD_year4/MoBa_scripts_used/Summary_stats_regression_results/MoBa_SNP_list.xlsx", col_names = FALSE)
+moba_snps=read_excel("MoBa_SNP_list.xlsx", col_names = FALSE)
 colnames(moba_snps)[1]="RSID"
 moba_snps$RSID=gsub("_.","",moba_snps$RSID)
 hypertension_exposure=tmp[which(tmp$SNP%in%moba_snps$RSID),]
@@ -40,7 +38,7 @@ outcome_original=as.data.frame(outcome_original[,grep("SNP|Mat_GA_wks_MBRN|Mat_b
 outcome=merge(outcome, outcome_original, by="SNP")
 
 colnames(outcome)[1]="RSID"
-eaf=read.csv("~/Library/CloudStorage/OneDrive-UniversityofBristol/Documents/PhD_year4/MoBa_scripts_used/Summary_stats_regression_results/summary_table_genetic_trio_hyp.csv")[,-1]
+eaf=read.csv("summary_table_genetic_trio_hyp.csv")[,-1]
 full_outcome=merge(outcome, eaf, by="RSID")
 colnames(full_outcome)[1]="SNP"
 full_outcome$CHR=as.character(full_outcome$CHR)
@@ -53,7 +51,7 @@ print(no_rsid)
 # 3. Append the gene and drug class, check mechanism of action on DrugBank for possible combined instruments per drug subclass.
 full_outcome$gene=NULL
 double_check=as.data.frame(matrix(NA,nrow=0, ncol=4))
-gene_pos=read_delim("~/Library/CloudStorage/OneDrive-UniversityofBristol/Documents/PhD_year4/MoBa_scripts_used/Summary_stats_regression_results/gene_chr_pos_hyp_270323.txt", col_names = F)
+gene_pos=read_delim("gene_chr_pos_hyp.txt", col_names = F)
 colnames(gene_pos)=c("chr.exposure","pos.exposure","pos.end.exposure","gene")
 for (i in 1:nrow(full_outcome))
 {
@@ -72,8 +70,8 @@ for (i in 1:nrow(full_outcome))
   }
 }
 
-genetic_targets=read.csv("/Users/cb18669/Library/CloudStorage/OneDrive-UniversityofBristol/Documents/PhD_year4/MoBa_scripts_used/Pre-moba-datafiles/identified_genes_hypertension_190523.csv")
-hypertension_bnf_code_to_drug_class=read_csv("/Users/cb18669/Library/CloudStorage/OneDrive-UniversityofBristol/Documents/PhD_year4/MoBa_scripts_used/Pre-moba-datafiles/hypertension_bnf_code_to_drug_class.csv")
+genetic_targets=read.csv("identified_genes_hypertension.csv")
+hypertension_bnf_code_to_drug_class=read_csv("hypertension_bnf_code_to_drug_class.csv")
 
 genetic_targets=merge(genetic_targets, hypertension_bnf_code_to_drug_class, all=T)
 genetic_targets[grep("2040", genetic_targets$bnf_code),"drug_subclass"]="Beta-adrenoceptor blocking drugs"
@@ -159,26 +157,34 @@ results_DC$`Drug subclass`=str_to_sentence(results_DC$`Drug subclass`)
 # 6. Tidy variables for plot
 
 results_DC$`Drug subclass`=str_wrap(results_DC$`Drug subclass`, width=20)
+results_DC$Outcome[grep("bwt", results_DC$Outcome)]="Birthweight (100g)"
 results_DC$Outcome[grep("GA_dys", results_DC$Outcome)]="Gestational age (days)"
+results_DC$Outcome[grep("GA_wks", results_DC$Outcome)]="Gestational age (weeks)"
 results_DC$Outcome[grep("any_hyp_prg", results_DC$Outcome)]="Hypertensive disorders of pregnancy"
 results_DC$Outcome[grep("brth_lngth", results_DC$Outcome)]="Birth length (cm)"
 results_DC$Outcome[grep("head_circum", results_DC$Outcome)]="Head circumference (cm)"
 results_DC$Outcome[grep("apgar_1min", results_DC$Outcome)]="Apgar score, 1 minute"
 results_DC$Outcome[grep("apgar_5min", results_DC$Outcome)]="Apgar score, 5 minutes"
+results_DC$Outcome[grep("any_development_delay", results_DC$Outcome)]="Developmental delay"
 results_DC$Outcome[grep("prorated_scores", results_DC$Outcome)]="Developmental score"
 results_DC$Outcome[grep("BW_GA", results_DC$Outcome)]="Birthweight z-score"
+results_DC$Outcome[grep("Congenital_malf", results_DC$Outcome)]="Congenital malformation"
 
 colnames(results_DC)[which(colnames(results_DC)=="b")]=c("Beta coefficient")
 
 results_wald_DC$`Drug subclass`=str_wrap(results_wald_DC$`Drug subclass`, width=20)
+results_wald_DC$Outcome[grep("bwt", results_wald_DC$Outcome)]="Birthweight (100g)"
 results_wald_DC$Outcome[grep("GA_dys", results_wald_DC$Outcome)]="Gestational age (days)"
+results_wald_DC$Outcome[grep("GA_wks", results_wald_DC$Outcome)]="Gestational age (weeks)"
 results_wald_DC$Outcome[grep("any_hyp_prg", results_wald_DC$Outcome)]="Hypertensive disorders of pregnancy"
 results_wald_DC$Outcome[grep("brth_lngth", results_wald_DC$Outcome)]="Birth length (cm)"
 results_wald_DC$Outcome[grep("head_circum", results_wald_DC$Outcome)]="Head circumference (cm)"
 results_wald_DC$Outcome[grep("apgar_1min", results_wald_DC$Outcome)]="Apgar score, 1 minute"
 results_wald_DC$Outcome[grep("apgar_5min", results_wald_DC$Outcome)]="Apgar score, 5 minutes"
+results_wald_DC$Outcome[grep("any_development_delay", results_wald_DC$Outcome)]="Developmental delay"
 results_wald_DC$Outcome[grep("prorated_scores", results_wald_DC$Outcome)]="Developmental score"
 results_wald_DC$Outcome[grep("BW_GA", results_wald_DC$Outcome)]="Birthweight z-score"
+results_wald_DC$Outcome[grep("Congenital_malf", results_wald_DC$Outcome)]="Congenital malformation"
 
 colnames(results_wald_DC)[which(colnames(results_wald_DC)=="b")]=c("Beta coefficient")
 results_wald_DC$`Drug subclass`=str_to_sentence(results_wald_DC$`Drug subclass`)
@@ -195,6 +201,9 @@ results_wald_DC$nsnp=1
 saved_wald_results=results_wald_DC
 saved_ivw_results=results_ivw_DC
 
+# 7. Transform variables from per sd increase to 10mmHg for interpretability. Flip the sign of the MR estimates so 
+# they are representative of drug effects (decreasing). Divide by SD and multiply by 10 to interpret on per 10mmHg scale.
+
 results_all_DC=rbind(saved_ivw_results[,c("Beta coefficient","se","pval","Upper CI","Lower CI","Drug subclass","MR method","Outcome","snps","nsnp")],
                      saved_wald_results[which(saved_wald_results$`Drug subclass`%!in%saved_ivw_results$outcome),c("Beta coefficient","se","pval","Upper CI","Lower CI","Drug subclass","MR method","Outcome","snps","nsnp")])
 
@@ -202,15 +211,6 @@ results_all_DC$`Drug subclass`[which(results_all_DC$`MR method`=="Wald ratio")]=
 results_all_DC$`Drug subclass`[which(results_all_DC$`MR method`=="IVW")]=paste0(results_all_DC$`Drug subclass`[which(results_all_DC$`MR method`=="IVW")]," (",
                                                                                 results_all_DC$nsnp[which(results_all_DC$`MR method`=="IVW")], " SNPs)")
 results_all_DC$Condition="Hypertension"
-
-# Ensure numeric. Exponentiate coefficients from binary variables
-
-results_all_DC[,c("Beta coefficient", "se", "pval","Upper CI", "Lower CI")]=apply(results_all_DC[,c("Beta coefficient", "se", "pval","Upper CI", "Lower CI")], 2, as.numeric)
-results_all_DC[which(results_all_DC$Outcome%in%c("Hypertensive disorders of pregnancy")),c("Beta coefficient", "Upper CI", "Lower CI")]=
-  exp(results_all_DC[which(results_all_DC$Outcome%in%c("Hypertensive disorders of pregnancy")),c("Beta coefficient", "Upper CI", "Lower CI")])
-
-# 7. Transform variables from per sd increase to 10mmHg for interpretability. Flip the sign of the MR estimates so 
-# they are representative of drug effects (decreasing). Divide by SD and multiply by 10 to interpret on per 10mmHg scale.
 
 results_all_DC$`Beta coefficient`=(results_all_DC$`Beta coefficient`/19.38)*10
 results_all_DC$`Beta coefficient`=-results_all_DC$`Beta coefficient`
@@ -224,13 +224,16 @@ results_all_DC$tmp=results_all_DC$`Upper CI`
 results_all_DC$`Upper CI`=results_all_DC$`Lower CI`
 results_all_DC$`Lower CI`=results_all_DC$tmp
 
-# 8. Plot results, "Preeclampsia" panel with modified x-axis limits.
+results_all_DC[which(results_all_DC$Outcome%in%c("Congenital malformation", "Hypertensive disorders of pregnancy")),c("Beta coefficient", "Upper CI", "Lower CI")]=
+  exp(results_all_DC[which(results_all_DC$Outcome%in%c("Congenital malformation", "Hypertensive disorders of pregnancy")),c("Beta coefficient", "Upper CI", "Lower CI")])
 
 results_all_DC$Outcome=str_wrap(results_all_DC$Outcome, width=20)
 
-# write.csv(results_all_DC ,"full_maternal_results.csv")
+# 8. Plot results, "Preeclampsia" panel with modified x-axis limits.
 
-results_all_DC=read.csv("results_r_r_CB.csv")
+# write.xlsx(results_all_DC ,"full_maternal_results.xlsx")
+
+results_all_DC=read.xlsx("full_maternal_results.xlsx")
 colnames(results_all_DC)=gsub("\\.", " ", colnames(results_all_DC))
 
 # Post review changes
@@ -283,6 +286,7 @@ results_all_DC$'Estimate (95% CI)'=paste0(results_all_DC$f_beta, " (",
                                           results_all_DC$f_lower, ", ",
                                           results_all_DC$f_upper, ")")
 
+results_all_DC$`Drug subclass`=gsub("\n", " ", results_all_DC$`Drug subclass`)
 
 for (k in unique(results_all_DC$Outcome))
 {
@@ -303,12 +307,12 @@ data_table_1 <- ggplot(filtered_results, aes(y = `Drug subclass`)) +
   labs(title = NULL) +
   theme(
     strip.background = element_blank(),
-    plot.margin = unit(c(1, 1, 1, 1), "lines"),
+    plot.margin = unit(c(1, 2, 1, 2), "lines"),
     text = element_text(size = 9))
 
 # Plot
 
-if (length(grep("Hypertensive", k)) == 0) {
+if (length(grep("Hypertensive|Congenital", k)) == 0) {
   plot_1 <- ggplot(results_all_DC[results_all_DC$Outcome %in% c(k), ], aes(x = `Beta coefficient`, y = `Drug subclass`)) +
     geom_point(size = 2, na.rm = TRUE) +
     scale_y_discrete(position = "left") +
@@ -322,7 +326,7 @@ if (length(grep("Hypertensive", k)) == 0) {
           axis.title.x = element_blank(), 
           axis.title.y = element_blank())
   
-} else {
+} else if (length(grep("Congenital", k)) == 1){
   plot_1 <- ggplot(results_all_DC[results_all_DC$Outcome %in% c(k), ], aes(x = `Beta coefficient`, y = `Drug subclass`)) +
     geom_point(size = 2) +
     scale_y_discrete(position = "left") +
@@ -338,35 +342,59 @@ if (length(grep("Hypertensive", k)) == 0) {
           axis.title.y = element_blank()) +
     guides(color = "none")
 }
-
+  else if (length(grep("Hypertensive", k)) == 1){
+    plot_1 <- ggplot(results_all_DC[results_all_DC$Outcome %in% c(k), ], aes(x = `Beta coefficient`, y = `Drug subclass`)) +
+      geom_point(size = 2) +
+      scale_y_discrete(position = "left") +
+      scale_x_continuous(trans = "log10") +
+      geom_linerange(aes(xmin = `Lower CI`, xmax = `Upper CI`)) +
+      geom_vline(data = subset(results_all_DC, Outcome %in% c(k)), aes(xintercept = 1)) +
+      theme_bw() +
+      theme(text = element_text(size=10),
+            strip.background = element_blank(),
+            axis.text.y=element_blank(), 
+            axis.ticks.y=element_blank(),
+            axis.title.x = element_blank(), 
+            axis.title.y = element_blank()) +
+      guides(color = "none")
+}
 
 assign(paste0("table_plot_",which(unique(results_all_DC$Outcome)==k)),
                            grid.arrange(data_table_1, plot_1, ncol = 2, top = textGrob(gsub("\n", " ", k),
                                                                                        gp = gpar(fontface = "bold", fontsize=15))))
-
 }
 
-x_title="Odds Ratio (OR) and 95% confidence interval (CI) for a 10mmHg decrease in systolic blood pressure"
-tiff(filename=paste0("maternal_w_table_1_r&r.tiff"),
-     units="cm", width=45, height=38, res=300)
-plot_a=grid.arrange(table_plot_5, table_plot_6, table_plot_3, table_plot_7, ncol = 2, bottom=x_title)
+x_title="Beta, continuous outcome, and 95% confidence interval (CI) for a 10mmHg decrease in systolic blood pressure"
+tiff(filename=paste0("a_maternal_w_table_1_r&r.tiff"),
+     units="cm", width=45, height=45, res=300)
+plot_a=grid.arrange(table_plot_9, table_plot_10, table_plot_7,
+                   ncol = 1, bottom=x_title)
 plot_a
 dev.off()
 
-x_title="Odds Ratio (OR), binary outcome, or beta, continuous outcome, and 95% confidence interval (CI) for a 10mmHg decrease in systolic blood pressure"
-tiff(filename=paste0("maternal_w_table_2_r&r.tiff"),
-     units="cm", width=45, height=38, res=300)
-plot_b=grid.arrange(table_plot_2, table_plot_8, table_plot_4, table_plot_1, ncol = 2, bottom=x_title)
+x_title="Odds ratio (OR), binary outcome, or beta, continuous outcome, and 95% confidence interval (CI) for a 10mmHg decrease in systolic blood pressure"
+tiff(filename=paste0("b_maternal_w_table_2_r&r.tiff"),
+     units="cm", width=45, height=45, res=300)
+plot_b=grid.arrange(table_plot_2, table_plot_1, table_plot_3, ncol = 1, bottom=x_title)
 plot_b
+dev.off()
+
+tiff(filename=paste0("c_maternal_w_table_2_r&r.tiff"),
+     units="cm", width=45, height=45, res=300)
+plot_c=grid.arrange(table_plot_5, table_plot_8, table_plot_4, ncol = 1, bottom=x_title)
+plot_c
 dev.off()
 
 # Journal request .eps file
 
 ggsave("plot_a.eps", plot_a, device="eps",
-       units="cm", width=45, height=38)
+       units="cm", width=45, height=45)
 
 ggsave("plot_b.eps", plot_b, device="eps",
-       units="cm", width=45, height=38)
+       units="cm", width=45, height=45)
+
+ggsave("plot_c.eps", plot_c, device="eps",
+       units="cm", width=45, height=45)
 
 
 # Results files
@@ -382,9 +410,8 @@ results_table_Maternal_DC[,"Drug subclass"]=gsub("\n"," ",results_all_DC$`Drug s
 results_table_Maternal_DC[,"No. SNPs"]=results_all_DC$nsnp
 results_table_Maternal_DC[,"Gene"]=results_all_DC$Gene
 results_table_Maternal_DC[,"rsID"]=results_all_DC$snps
-results_table_Maternal_DC=results_table_Maternal_DC[-which(results_table_Maternal_DC$Outcome=="Developmental delay"),]
+results_table_Maternal_DC=results_table_Maternal_DC[-which(results_table_Maternal_DC$Outcome=="Birthweight (100g)"),]
 write.csv(results_table_Maternal_DC,"hypertension_subclass_maternal_r&r.csv" )
 
 write.csv(results_all_DC, "gest_r_full_file_mat.csv")
-
 
