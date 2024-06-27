@@ -6,11 +6,11 @@ MBRN=MBRN[,c("PREG_ID_2306","BARN_NR","MORS_ALDER","FARS_ALDER", "ZSCORE_BW_GA")
 
 colnames(MBRN)=c("PREG_ID_2306","BARN_NR","mthr_age","fthr_age", "BW_GA",)
 
-rm(MBRN)
-
 # Export to cluster to format
 
 write.csv(MBRN,"r_r_phenotypic_data.csv")
+
+rm(MBRN)
 
 # Obtain merged file from cluster.
 
