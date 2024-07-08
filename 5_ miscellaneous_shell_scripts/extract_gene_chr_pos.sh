@@ -1,0 +1,1 @@
+--bfile .../.../(bed/bim/fam location) --extract range .../(text tile of gene chr pos) --export A --out ../(output location)
