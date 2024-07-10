@@ -1,7 +1,7 @@
 ## R&R MR analysis
 
 library(readr);library(TwoSampleMR);library(data.table);library(tidyr);library(stringr);library(ggplot2);library(ggh4x);library(vcfR);library(grid)
-library(gwasvcf);library(gwasglue);library(gridExtra);library(readxl);library(LDlinkR);library(readxl);library(dplyr);library(openxlsx)
+library(gwasvcf);library(gwasglue);library(gridExtra);library(readxl);library(LDlinkR);library(readxl);library(dplyr);library(openxlsx);library(openxlsx);library(gridExtra)
 `%!in%` = Negate(`%in%`)
 options(scipen = 999)
 
@@ -283,7 +283,7 @@ results_all_DC$f_lower=lapply(results_all_DC$`Lower CI`, sigfigs)
 results_all_DC$f_upper=lapply(results_all_DC$`Upper CI`, sigfigs)
 
 results_all_DC$'Estimate (95% CI)'=paste0(results_all_DC$f_beta, " (",
-                                          results_all_DC$f_lower, ", ",
+                                          gsub(" ", "", results_all_DC$f_lower), ", ",
                                           results_all_DC$f_upper, ")")
 
 results_all_DC$`Drug subclass`=gsub("\n", " ", results_all_DC$`Drug subclass`)
